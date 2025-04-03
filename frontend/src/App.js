@@ -1,45 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
-import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
-import { useWallet, WalletProvider, ConnectionProvider } from '@solana/wallet-adapter-react';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { Program, Provider, web3 } from '@coral-xyz/anchor';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { PhantomWalletAdapter, SolflareWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { WalletModalProvider, WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { WalletProvider, ConnectionProvider } from '@solana/wallet-adapter-react';
 import YieldFarmUI from './components/YieldFarmUI';
+
+// Import styles
+import '@solana/wallet-adapter-react-ui/styles.css';
+import './index.css';
+
+// Import the IDL
 import idl from './idl.json';
 
-// Import wallet adapter styles
-import '@solana/wallet-adapter-react-ui/styles.css';
-
-// Set up the network and wallet configuration
+// Set up the network and endpoint
 const network = WalletAdapterNetwork.Devnet;
-const endpoint = clusterApiUrl(network);
-const wallets = [
-  new PhantomWalletAdapter(),
-  new SolflareWalletAdapter(),
-];
+const endpoint = 'https://api.devnet.solana.com';
 
-// The program ID from your deployed contract
-const programId = new PublicKey("GUrBCCME6Cmp9NA4yNSYy1BvKczYPwnqdXSVFAd21sAA");
+// Create a wallet adapter array
+const wallets = [new PhantomWalletAdapter()];
+
+// Set up the program ID from the IDL
+const programId = new PublicKey(idl.metadata.address);
 
 function App() {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          <div className="App">
-            <header className="App-header">
-              <h1>The Basement Yield Farming</h1>
-              <WalletMultiButton />
-            </header>
-            <main>
-              <BasementContent />
-            </main>
-            <footer>
-              <p>© 2023 The Basement - Efficient Yield Farming on Solana</p>
-            </footer>
-          </div>
-        </WalletModalProvider>
+        <div className="App">
+          <header className="App-header">
+            <h1>The Basement Yield Farm</h1>
+            <WalletMultiButton />
+          </header>
+          <main>
+            <BasementContent />
+          </main>
+          <footer>
+            <p>© 2023 The Basement - Advanced Yield Farming System</p>
+          </footer>
+        </div>
       </WalletProvider>
     </ConnectionProvider>
   );
@@ -52,67 +53,75 @@ function BasementContent() {
   const [userDeposit, setUserDeposit] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Initialize the program when wallet is connected
   useEffect(() => {
-    // Initialize the program when wallet is connected
-    if (wallet.publicKey) {
+    if (wallet.connected) {
       initializeProgram();
     }
-  }, [wallet.publicKey]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet.connected]);
 
+  // Load data when program is initialized
+  useEffect(() => {
+    if (program) {
+      loadYieldFarmData(program);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [program]);
+
+  // Initialize Anchor program
   const initializeProgram = async () => {
     try {
-      // Create the provider
-      const provider = new AnchorProvider(
-        new Connection(endpoint),
+      // Create a connection to the Solana network
+      const connection = new Connection(endpoint, 'confirmed');
+      
+      // Create an Anchor provider
+      const provider = new Provider(
+        connection,
         wallet,
-        { preflightCommitment: 'processed' }
+        { commitment: 'confirmed', preflightCommitment: 'confirmed' }
       );
-
-      // Create the program
+      
+      // Create the program interface
       const program = new Program(idl, programId, provider);
       setProgram(program);
-
-      // Load data if program is successfully created
-      await loadYieldFarmData(program);
     } catch (error) {
       console.error("Error initializing program:", error);
     }
   };
 
-  const loadYieldFarmData = async (programInstance) => {
+  // Load yield farm data
+  const loadYieldFarmData = async (program) => {
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Derive the yield farm address PDA
-      const tokenMint = new PublicKey("YOUR_TOKEN_MINT"); // Replace with your token mint
+      // Load token mint address (this would be configured as a constant in a real app)
+      // For now, we'll use a placeholder
+      const tokenMint = new PublicKey("BFZpksditzAhQbZ3xsdDvJjbXy5VZ2DkYZ7KxPPySEve");
+      
+      // Get the yield farm account PDA
       const [yieldFarmAddress] = await PublicKey.findProgramAddressSync(
         [Buffer.from("yield_farm"), tokenMint.toBuffer()],
-        programId
+        program.programId
       );
-
+      
       // Fetch the yield farm account data
-      const yieldFarmAccount = await programInstance.account.yieldFarm.fetch(yieldFarmAddress);
+      const yieldFarmAccount = await program.account.yieldFarm.fetch(yieldFarmAddress);
       setYieldFarmData(yieldFarmAccount);
-
-      // If wallet is connected, get user's deposit
-      if (wallet.publicKey) {
-        // Derive the user deposit address PDA
+      
+      // If wallet is connected, load user deposit data
+      if (wallet.connected) {
+        // Get user deposit account PDA
         const [userDepositAddress] = await PublicKey.findProgramAddressSync(
-          [
-            Buffer.from("user_deposit"),
-            wallet.publicKey.toBuffer(),
-            yieldFarmAddress.toBuffer(),
-          ],
-          programId
+          [Buffer.from("user_deposit"), wallet.publicKey.toBuffer(), yieldFarmAddress.toBuffer()],
+          program.programId
         );
-
+        
+        // Try to fetch user deposit data (might not exist yet)
         try {
-          // Fetch the user deposit account data
-          const userDepositAccount = await programInstance.account.userDeposit.fetch(userDepositAddress);
+          const userDepositAccount = await program.account.userDeposit.fetch(userDepositAddress);
           setUserDeposit(userDepositAccount);
         } catch (error) {
-          // User might not have a deposit yet
-          console.log("No deposit found for user");
+          console.log("User has no deposit yet:", error);
           setUserDeposit(null);
         }
       }
@@ -123,11 +132,11 @@ function BasementContent() {
     }
   };
 
-  // Return loading state or component based on wallet connection
   if (!wallet.connected) {
     return (
       <div className="not-connected">
-        <p>Connect your wallet to use The Basement Yield Farming</p>
+        <p>Please connect your wallet to interact with The Basement Yield Farm.</p>
+        <WalletMultiButton />
       </div>
     );
   }
