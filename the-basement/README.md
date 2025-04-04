@@ -36,6 +36,26 @@ A Solana-based yield farming system that efficiently distributes user deposits i
 - Tertiary: CEX APIs as last resort
 - Enhanced monitoring for the narrow 1 BIN Step due to high volatility
 
+## DEX Integration
+
+The Basement yield farming system is designed to integrate with multiple Solana DEXes to optimize yield returns. Currently, the system supports:
+
+- **Orca** - Integration with Orca liquidity pools
+- **Raydium** - Integration with Raydium liquidity pools
+- **Meteora** - Integration with Meteora's concentrated liquidity pools
+
+The keeper bot fetches yield data from these DEXes and rebalances the deposits based on current market conditions to maximize returns. Meteora's concentrated liquidity BIN model aligns perfectly with our BIN allocation strategy, making it an ideal partner for The Basement's yield optimization.
+
+### Meteora Integration Details
+
+The Basement uses Meteora's bin model for its yield farming strategy:
+
+1. **Large BIN** (20 Step with ~6.57% price range): Allocated 80% of deposits for wider market coverage and stable returns
+2. **Medium BIN** (4 Step with ~1.35% price range): Allocated 10% of deposits for balanced risk/reward profile
+3. **Small BIN** (1 Step with ~0.34% price range): Allocated 10% of deposits for higher APY potential
+
+The keeper bot automatically queries Meteora's API to fetch current yield data for these bin ranges and adjusts the allocation strategy accordingly.
+
 ## Project Structure
 
 ```

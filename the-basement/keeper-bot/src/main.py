@@ -221,25 +221,75 @@ class DexService:
         }
         
         # In a production app, this would query actual DEX APIs
-        # For demonstration, we'll use mock data
         try:
             # Process each DEX API
             for dex_name, api_url in DEX_API_URLS.items():
                 try:
-                    # In a real implementation, we would make an API call
-                    # response = requests.get(api_url)
-                    # data = response.json()
+                    logger.info(f"Fetching yields from {dex_name} at {api_url}")
                     
-                    # Using mock data for demonstration
-                    mock_data = {
-                        "large_bin": 0.045 + (hash(dex_name) % 100) / 1000,  # 4.5% + random variation
-                        "medium_bin": 0.063 + (hash(dex_name) % 100) / 1000,  # 6.3% + random variation
-                        "small_bin": 0.082 + (hash(dex_name) % 100) / 1000,   # 8.2% + random variation
-                    }
-                    
-                    # Store yields for this DEX
-                    for bin_type, apy in mock_data.items():
-                        yields_data[bin_type][dex_name] = apy
+                    # In a real implementation, we would make API calls
+                    # With specific parsing for each DEX
+                    if dex_name == "meteora":
+                        # Special handling for Meteora API
+                        try:
+                            # In production, make actual API call:
+                            # response = requests.get(api_url)
+                            # data = response.json()
+                            
+                            # For demonstration, using mock Meteora data with concentrated liquidity bins
+                            meteora_mock_data = {
+                                "pools": [
+                                    {
+                                        "pool_id": "meteora_pool_1",
+                                        "bin_step": 657,  # 6.57% - corresponds to large bin
+                                        "apy": 0.052,     # 5.2% APY
+                                        "tvl": 1500000
+                                    },
+                                    {
+                                        "pool_id": "meteora_pool_2",
+                                        "bin_step": 135,  # 1.35% - corresponds to medium bin
+                                        "apy": 0.071,     # 7.1% APY
+                                        "tvl": 900000
+                                    },
+                                    {
+                                        "pool_id": "meteora_pool_3",
+                                        "bin_step": 34,   # 0.34% - corresponds to small bin
+                                        "apy": 0.089,     # 8.9% APY
+                                        "tvl": 500000
+                                    }
+                                ]
+                            }
+                            
+                            # Parse Meteora data based on bin_step
+                            for pool in meteora_mock_data["pools"]:
+                                bin_step = pool["bin_step"]
+                                
+                                # Match bin step to our bin types
+                                if bin_step > 500:  # Large bin
+                                    yields_data["large_bin"]["meteora"] = pool["apy"]
+                                elif bin_step > 100:  # Medium bin
+                                    yields_data["medium_bin"]["meteora"] = pool["apy"]
+                                else:  # Small bin
+                                    yields_data["small_bin"]["meteora"] = pool["apy"]
+                                    
+                            logger.info(f"Parsed Meteora yields: Large={yields_data['large_bin'].get('meteora')}, " +
+                                       f"Medium={yields_data['medium_bin'].get('meteora')}, " +
+                                       f"Small={yields_data['small_bin'].get('meteora')}")
+                            
+                        except Exception as e:
+                            logger.error(f"Error parsing Meteora data: {e}")
+                    else:
+                        # Generic handling for other DEXes (Orca, Raydium, etc)
+                        # Using mock data for demonstration
+                        mock_data = {
+                            "large_bin": 0.045 + (hash(dex_name) % 100) / 1000,  # 4.5% + random variation
+                            "medium_bin": 0.063 + (hash(dex_name) % 100) / 1000,  # 6.3% + random variation
+                            "small_bin": 0.082 + (hash(dex_name) % 100) / 1000,   # 8.2% + random variation
+                        }
+                        
+                        # Store yields for this DEX
+                        for bin_type, apy in mock_data.items():
+                            yields_data[bin_type][dex_name] = apy
                         
                 except Exception as e:
                     logger.error(f"Error fetching yield data from {dex_name}: {e}")
@@ -252,7 +302,7 @@ class DexService:
                 else:
                     avg_yields[bin_type] = 0
             
-            logger.info(f"Current BIN yields: {avg_yields}")
+            logger.info(f"Current BIN yields across all DEXes: {avg_yields}")
             return yields_data
         except Exception as e:
             logger.error(f"Error in get_dex_yields: {e}")

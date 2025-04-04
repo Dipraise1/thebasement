@@ -266,4 +266,36 @@ For production, consider deploying the keeper bot using:
    - Check network matches deployment network
    - Verify program ID is correct
 
-For additional help, please file an issue in the GitHub repository. 
+For additional help, please file an issue in the GitHub repository.
+
+## Meteora Integration Setup
+
+For proper integration with Meteora's concentrated liquidity pools, follow these additional steps:
+
+### 1. Create Meteora Pool Position (Optional)
+
+If you want to create positions in Meteora pools directly from your contract:
+
+```bash
+# Install Meteora SDK
+npm install @meteora-ag/concentrated-liquidity
+```
+
+### 2. Configure Keeper Bot for Meteora
+
+In your keeper bot's `.env` file, ensure Meteora API is properly configured:
+
+```
+# Ensure Meteora is included in DEX_API_URLS
+DEX_API_URLS={"orca": "https://api.orca.so/v1/pools", "raydium": "https://api.raydium.io/v2/main/pools", "meteora": "https://api.meteora.ag/v1/pools"}
+```
+
+### 3. Verify BIN Settings
+
+Ensure your yield farm's bin settings align with Meteora's bin steps:
+
+- Large BIN: 20 Step (~6.57%) - Corresponds to Meteora pools with bin_step > 500
+- Medium BIN: 4 Step (~1.35%) - Corresponds to Meteora pools with bin_step > 100
+- Small BIN: 1 Step (~0.34%) - Corresponds to Meteora pools with bin_step <= 100
+
+These BIN settings are automatically configured during initialization, but can be verified in the contract. 
